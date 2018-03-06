@@ -12,14 +12,15 @@ var config = require('./config');
  
 
 mongoose.Promise = global.Promise;
-mongoose.connect( config.mongodb_uri, {reconnectTries: Number.MAX_VALUE, poolSize: 10 });
+mongoose.connect( config.mongodb_uri);
   var db = mongoose.connection;
   db.on('error',console.error.bind(console, 'connection error:'));
   db.once('open', function(){
     console.log('connected to db server successfully');
   });
 
-var index = require('./routes/index');
+
+  var index = require('./routes/index');
 
 var app = express();
 

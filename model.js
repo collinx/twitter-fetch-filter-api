@@ -3,9 +3,21 @@ var mongoose = require('mongoose');
 var tweetSchema = mongoose.Schema({
     
     created_at : Number,
+    lang: String,
+    type:String,
+    type_id:String,
     tweet: {
-        
+        id:Number,
+        text: String,
+        quote_count:Number,
+        reply_count:Number,
+        retweet_count:Number,
+        favorite_count:Number,
+
     },
+    urls:[],
+    user_mentions:[],
+    hashtags:[],
     user : {
              id : Number,
              name : String,
@@ -17,6 +29,7 @@ var tweetSchema = mongoose.Schema({
              likes_count: Number,
              tweets_count: Number,
              joined_at: Number,
+             time_zone:String,
          }
 });
 
