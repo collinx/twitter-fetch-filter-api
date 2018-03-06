@@ -5,18 +5,19 @@ var favicon = require('serve-favicon');
 var logger = require('morgan');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
+var mongoose = require("mongoose");
+var config = require('./config');
+ 
+ 
+ 
 
-
-
-/* // database connect
-var DBconfig = require('./config/dbconfig')
 mongoose.Promise = global.Promise;
-mongoose.connect(DBconfig.url, { useMongoClient: true });
-var db = mongoose.connection;
-db.on('error',console.error.bind(console, 'connection error:'));
-db.once('open', function(){
-  console.log('connected to db server successfully');
-}); */
+mongoose.connect( config.mongodb_uri, {reconnectTries: Number.MAX_VALUE, poolSize: 10 });
+  var db = mongoose.connection;
+  db.on('error',console.error.bind(console, 'connection error:'));
+  db.once('open', function(){
+    console.log('connected to db server successfully');
+  });
 
 var index = require('./routes/index');
 

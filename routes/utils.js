@@ -21,15 +21,15 @@ module.exports.stream_function = function(req, res, next) {
   let start_time = (new Date()).getTime(); 
   // You can also get the stream in a callback if you prefer. 
   client.stream('statuses/filter', {track: keyword}, function(stream) {
+   
     let results=[];
-    let count=0;
+  
     stream.on('data', function(event) {
       results.push(event); 
       tweet_count++;
-      console.log(tweet_count, start_time, (new Date()).getTime() );
-      if(tweet_count >= max_tweet){
+      if(tweet_count >= max_tweet || (new Date()).getTime() >= max_time*1000 + start_time){
         stream.destroy();
-       
+        save_data(results);
         res.send({
           'code' : 0,
           'status' : "Success",
@@ -37,15 +37,7 @@ module.exports.stream_function = function(req, res, next) {
         });
       } 
 
-      if( (new Date()).getTime() >= max_time*1000 + start_time){
-        stream.destroy();
-       
-        res.send({
-          'code' : 0,
-          'status' : "Success",
-          'message' : "Streaming Completed with"+ tweet_count +"Tweets"
-        });
-      } 
+     
       
   
     });
@@ -60,4 +52,8 @@ module.exports.stream_function = function(req, res, next) {
   });
   }
 
-
+let save_data = function(results) {
+  
+  
+    console.log(results.length);
+    }

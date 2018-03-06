@@ -2,7 +2,10 @@ var mongoose = require('mongoose');
 
 var tweetSchema = mongoose.Schema({
     
-    
+    created_at : Number,
+    tweet: {
+        
+    },
     user : {
              id : Number,
              name : String,
