@@ -13,8 +13,8 @@ var keys  =  {
 
 var stream;
 
-const MAX_TWEET = 100;
-const MAX_TIME = 30;
+const MAX_TWEET = 200;
+const MAX_TIME = 60;
 
 module.exports.stream_function = function(req, res, next) {
   var Twitter = new TwitterStream(keys, false);
@@ -113,6 +113,37 @@ module.exports.stream_function = function(req, res, next) {
   
 }
 
+
+module.exports.filter_function = function(req, res, next) {
+
+  var perPage = 10;
+  var page = req.body.page || req.query.page || 1;
+  page = Number(page);
+  var query;
+  Tweet.find(query).skip((perPage * page) - perPage)
+  .limit(perPage).exec( function(err,results){
+    Tweet.find(query).count().exec(function(err, count) {
+        if(count / perPage < page){
+          res.send({
+            
+            "total_pages": Math.ceil(count / perPage),
+            "total_match" : count,
+          });
+        }else{
+          res.send({
+            "current_page": page,
+            "total_pages": Math.ceil(count / perPage),
+            "results" : results,
+            "total_match" : count,
+          });
+        }
+      
+    })
+  })
+
+}
+ 
+
 var save_data = function(results) {
   console.log(results.length);
   
@@ -180,7 +211,7 @@ var save_data = function(results) {
           return;
       }
       else {
-          
+       
           return;
       }
       });
@@ -188,7 +219,7 @@ var save_data = function(results) {
     
     
     
-   console.log(tweet);
+   
     
   })  
   
