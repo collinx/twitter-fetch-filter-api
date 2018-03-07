@@ -123,7 +123,7 @@ module.exports.filter_function = function(req, res, next) {
   var sortQ = {};
   var perPage = 10;
   var page = req.body.page || req.query.page || 1;
-   
+  
   
   var filters = {
     0 :[
@@ -145,18 +145,18 @@ module.exports.filter_function = function(req, res, next) {
       'uretw',
     ],
     2 :[
-    
-    'sdate',
-    'edate',
-   
+      
+      'sdate',
+      'edate',
+      
     ],
   }
-    
- 
-
+  
+  
+  
   
   var sort =  req.body.sort || req.query.sort || null;
- 
+  
   filters['0'].forEach(data => {
     var det = req.body[data] || req.query[data] || null;
     if(det != null){
@@ -191,7 +191,7 @@ module.exports.filter_function = function(req, res, next) {
       }
     }
   });
-
+  
   filters['1'].forEach(data => {
     var det = req.body[data] || req.query[data] || null;
     if(det != null){
@@ -211,9 +211,9 @@ module.exports.filter_function = function(req, res, next) {
         break;
         case 'uretw': reg = 'user.tweets_count';
         break;
-         
+        
       }
-     
+      
       switch(temp[0]){
         case '00':  query[reg]= {$eq : temp[1]};
         break;
@@ -221,11 +221,11 @@ module.exports.filter_function = function(req, res, next) {
         break;
         case '10':  query[reg]= {$lt : temp[1]};
         break;
-       
+        
       }
     }
   });
-
+  
   filters['2'].forEach(data => {
     var det = req.body[data] || req.query[data] || null;
     if(det != null){
@@ -234,13 +234,13 @@ module.exports.filter_function = function(req, res, next) {
         break;
         case 'edate':query['created_at']= {$lte : (new Date(det)).getTime()};
         break;
-       
+        
       }
     }
   });
   
- 
-
+  
+  
   if(sort !=null){
     var temp = sort.split('-');
     switch(temp[1]){
@@ -256,71 +256,75 @@ module.exports.filter_function = function(req, res, next) {
       break;
     }
   }
-
+  
   console.log();
   page = Number(page);
   
   if(req.path.split('/')[2] == 'csv'){
-
+    
     Tweet.find(query).sort(sortQ).exec( function(err,results){
       var fin = [];
-          if(results != undefined){
-            results.forEach(result => {
-  
-              var temp = {
-                date: new Date(result.created_at),
-                lang: result.lang,
-                text: result.text,
-                retweet: result.retweet_count,
-                fav: result.favorite_count,
-                urls: result.urls.join(),
-                mentions: result.user_mentions.join(),
-                hashtags: result.hashtags.join(),
-                userScreenName: result.user.screen_name,
-                userName: result.user.name,
-                userFollowers: result.user.followers_count,
-                userFollowing: result.user.following_count,
-                userTweets: result.user.tweets_count
-              }
-              fin.push(temp);
-            });
-
-            var fields =[
-              'date', 
-              'lang', 
-              'text', 
-              'retweet',
-              'fav',
-              'urls',
-              'mentions',
-              'hashtags',
-              'userScreenName',
-              'userName',
-              'userFollowers',
-              'userFollowing',
-              'userTweets',
-            ];
-            var opts = { fields };
-            
-            try {
-              const csv = json2csv(fin, opts);
-              res.setHeader('Content-disposition', 'attachment; filename=tweets.csv');
-              res.set('Content-Type', 'text/csv');
-              res.status(200).send(csv);
-            } catch (err) {
-              console.error(err);
-            }
-
-             
-   
-
-          }else{
-
+      if(results != undefined){
+        results.forEach(result => {
+          
+          var temp = {
+            date: new Date(result.created_at),
+            lang: result.lang,
+            text: result.text,
+            retweet: result.retweet_count,
+            fav: result.favorite_count,
+            urls: result.urls.join(),
+            mentions: result.user_mentions.join(),
+            hashtags: result.hashtags.join(),
+            userScreenName: result.user.screen_name,
+            userName: result.user.name,
+            userFollowers: result.user.followers_count,
+            userFollowing: result.user.following_count,
+            userTweets: result.user.tweets_count
           }
+          fin.push(temp);
+        });
+        
+        var fields =[
+          'date', 
+          'lang', 
+          'text', 
+          'retweet',
+          'fav',
+          'urls',
+          'mentions',
+          'hashtags',
+          'userScreenName',
+          'userName',
+          'userFollowers',
+          'userFollowing',
+          'userTweets',
+        ];
+        var opts = { fields };
+        
+        try {
+          const csv = json2csv(fin, opts);
+          res.setHeader('Content-disposition', 'attachment; filename=tweets.csv');
+          res.set('Content-Type', 'text/csv');
+          res.status(200).send(csv);
+        } catch (err) {
+          console.error(err);
+        }
+        
+        
+        
+        
+      }else{
+        
+        res.send({
+          "code":-1,
+          "status":"Failed! Error"
+        });
+      }
     })
-
+    
   }else{
-
+    
     Tweet.find(query).sort(sortQ).skip((perPage * page) - perPage)
     .limit(perPage).exec( function(err,results){
       Tweet.find(query).count().exec(function(err, count) {
@@ -331,11 +335,11 @@ module.exports.filter_function = function(req, res, next) {
             "total_match" : count,
           });
         }else{
-  
+          
           var fin = [];
           if(results != undefined){
             results.forEach(result => {
-  
+              
               var temp = {
                 date: result.created_at,
                 lang: result.lang,
@@ -353,7 +357,7 @@ module.exports.filter_function = function(req, res, next) {
               }
               fin.push(temp);
             });
-  
+            
             res.send({
               "current_page": page,
               "total_pages": Math.ceil(count / perPage),
@@ -366,9 +370,9 @@ module.exports.filter_function = function(req, res, next) {
               "total_match" : count,
             });
           }
-        
-  
-         
+          
+          
+          
         }
         
       })
@@ -463,5 +467,5 @@ var save_data = function(data) {
 }
 
 var get_data = function(data){
-
+  
 }

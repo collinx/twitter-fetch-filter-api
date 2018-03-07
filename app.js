@@ -24,12 +24,6 @@ mongoose.connect( config.mongodb_uri);
 
 var app = express();
 
-app.set('views', path.join(__dirname, 'public'));
-app.set('view engine', 'ejs');
-
-app.use('*/js', express.static(path.join(__dirname, 'public/js')))
-app.use('*/css', express.static(path.join(__dirname, 'public/css'))) 
-
 app.use(logger('dev'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
