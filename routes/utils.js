@@ -124,30 +124,122 @@ module.exports.filter_function = function(req, res, next) {
   var perPage = 10;
   var page = req.body.page || req.query.page || 1;
   
-  var keyword = req.body.keyword || req.query.keyword || null;
-  
-  var name = req.body.name || req.query.name || null;
+  var filters = {
+    0 :[
+      'keywords',
+      'name',
+      'lang',
+      'sname',
+      'mentions',
+      'hashtags',
+      'urls',
+    ],
+    1 :[
+      
+      'retw',
+      'fav',
+      'quo',
+      'ufol',
+      'ufav',
+      'uretw',
+    ],
+    2 :[
+    
+    'sdate',
+    'edate',
+   
+    ],
+  }
+    
+ 
+
   
   var sort =  req.body.sort || req.query.sort || null;
-
-  var lang = req.body.lang || req.query.lang || null;
-
-
-  if(keyword != null){
-    query['text'] = {$regex: keyword+"+", $options:"i"};
-  }
-  
-  
-  if(name != null){
-    
-    query['user.screen_name'] = name;
-    
-  }
-
-  if(lang != null){
-    query['lang'] = lang;
-  }
  
+  filters['0'].forEach(data => {
+    var det = req.body[data] || req.query[data] || null;
+    if(det != null){
+      var temp = det.split('-');
+      var reg;
+      var fd;
+      switch(data){
+        case 'keywords': reg = 'text';
+        break;
+        case 'name': reg = 'user.name';
+        break;
+        case 'lang': reg = 'lang';
+        break;
+        case 'sname': reg = 'user.screen_name';
+        break;
+        case 'mentions': reg = 'user_mentions';
+        break;
+        case 'urls': reg = 'urls';
+        break;
+        case 'hashtags': reg = 'hashtags';
+        break;
+      }
+      switch(temp[0]){
+        case '00': reg == 'user_mentions' || reg == 'urls' || reg == 'hashtags'? query[reg]= { $in : [new RegExp("^"+temp[1])]} : query[reg]= {$regex : "^" + temp[1]};
+        break;
+        case "01": reg == 'user_mentions' || reg == 'urls'  || reg == 'hashtags'? query[reg]= { $in : [new RegExp(temp[1]+ "$")]} : query[reg]= {$regex :  temp[1]+ "$"};
+        break;
+        case '10': reg == 'user_mentions'  || reg == 'urls' || reg == 'hashtags'? query[reg]= { $in : [new RegExp(temp[1])]} : query[reg]= {$regex :  temp[1]};
+        break;
+        case '11': reg == 'user_mentions'   || reg == 'urls' || reg == 'hashtags'? query[reg]= { $in : [temp[1]]} : query[reg]=  temp[1];
+        break;
+      }
+    }
+  });
+
+  filters['1'].forEach(data => {
+    var det = req.body[data] || req.query[data] || null;
+    if(det != null){
+      var temp = det.split('-');
+      var reg;
+      var fd;
+      switch(data){
+        case 'retw': reg = 'retweet_count';
+        break;
+        case 'fav': reg = 'favorite_count';
+        break;
+        case 'quo': reg = 'quote_count';
+        break;
+        case 'ufol': reg = 'user.followers_count';
+        break;
+        case 'ufav': reg = 'user.likes_count';
+        break;
+        case 'uretw': reg = 'user.tweets_count';
+        break;
+         
+      }
+     
+      switch(temp[0]){
+        case '00':  query[reg]= {$eq : temp[1]};
+        break;
+        case "01": query[reg]= {$gt : temp[1]};
+        break;
+        case '10':  query[reg]= {$lt : temp[1]};
+        break;
+       
+      }
+    }
+  });
+
+  filters['2'].forEach(data => {
+    var det = req.body[data] || req.query[data] || null;
+    if(det != null){
+      switch(data){
+        case 'sdate': query['created_at']= {$gte : (new Date(det)).getTime()};
+        break;
+        case 'edate':query['created_at']= {$lte : (new Date(det)).getTime()};
+        break;
+       
+      }
+    }
+  });
+  
+ 
+
   if(sort !=null){
     var temp = sort.split('-');
     switch(temp[1]){
@@ -181,32 +273,42 @@ module.exports.filter_function = function(req, res, next) {
       }else{
 
         var fin = [];
-        results.forEach(result => {
+        if(results != undefined){
+          results.forEach(result => {
 
-          var temp = {
-            date: result.created_at,
-            lang: result.lang,
-            text: result.text,
-            retweet: result.retweet_count,
-            fav: result.favorite_count,
-            urls: result.urls,
-            mentions: result.mentions,
-            hashtags: result.hashtags,
-            userScreenName: result.user.screen_name,
-            userName: result.user.name,
-            userFollowers: result.user.followers_count,
-            userFollowing: result.user.following_count,
-            userTweets: result.user.tweets_count
-          }
-          fin.push(temp);
-        });
+            var temp = {
+              date: result.created_at,
+              lang: result.lang,
+              text: result.text,
+              retweet: result.retweet_count,
+              fav: result.favorite_count,
+              urls: result.urls,
+              mentions: result.user_mentions,
+              hashtags: result.hashtags,
+              userScreenName: result.user.screen_name,
+              userName: result.user.name,
+              userFollowers: result.user.followers_count,
+              userFollowing: result.user.following_count,
+              userTweets: result.user.tweets_count
+            }
+            fin.push(temp);
+          });
 
-        res.send({
-          "current_page": page,
-          "total_pages": Math.ceil(count / perPage),
-          "results" : fin,
-          "total_match" : count,
-        });
+          res.send({
+            "current_page": page,
+            "total_pages": Math.ceil(count / perPage),
+            "results" : fin,
+            "total_match" : count,
+          });
+        } else {
+          res.send({
+            "total_pages": Math.ceil(count / perPage),
+            "total_match" : count,
+          });
+        }
+      
+
+       
       }
       
     })
