@@ -465,7 +465,4 @@ var save_data = function(data) {
     }
   });
 }
-
-var get_data = function(data){
-  
-}
+ 
