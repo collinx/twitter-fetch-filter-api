@@ -52,7 +52,7 @@ module.exports.stream_function = function(req, res, next) {
   });
   
   Twitter.on('connection rate limit', function (httpStatusCode) {
-     
+    
     res.send({
       'code' : httpStatusCode,
       'status' : "Failed",
@@ -69,22 +69,23 @@ module.exports.stream_function = function(req, res, next) {
   
   Twitter.on('data', function (obj) {
     var data = JSON.parse(obj);
-   
+    
     if(results.length == 0){
       res.send({
         'code' : 0,
         'status' : "Success",
         'message' : "Streaming Successful",
-        'data' : data,
+        
       });
     }
     results.push(data);
+    save_data(data);
     tweet_count++;
     
     if(tweet_count >= max_tweet || (new Date()).getTime() >= max_time*1000 + start_time){
       Twitter.close();
       
-      save_data(results);
+      
       start_time = (new Date()).getTime();
       tweet_count = 0;
       results = [];
@@ -93,7 +94,7 @@ module.exports.stream_function = function(req, res, next) {
   
   Twitter.on('data keep-alive', function () {
     console.log('data keep-alive');
-    if(tweet_count == 0 || (new Date()).getTime() >= 5*1000 + start_time){
+    if(tweet_count == 0 && (new Date()).getTime() >= 5*1000 + start_time){
       Twitter.close();
       
       res.send({
@@ -102,8 +103,11 @@ module.exports.stream_function = function(req, res, next) {
         'message' : "No Tweets Found",
         
       });
-    } 
+    }
     
+    if((new Date()).getTime() >= (max_time+1)*1000 + start_time){
+      Twitter.close();
+    }
   });
   
   Twitter.on('data error', function (error) {
@@ -115,116 +119,180 @@ module.exports.stream_function = function(req, res, next) {
 
 
 module.exports.filter_function = function(req, res, next) {
-
+  var query = {};
+  var sortQ = {};
   var perPage = 10;
   var page = req.body.page || req.query.page || 1;
+  
+  var keyword = req.body.keyword || req.query.keyword || null;
+  
+  var name = req.body.name || req.query.name || null;
+  
+  var sort =  req.body.sort || req.query.sort || null;
+
+  var lang = req.body.lang || req.query.lang || null;
+
+
+  if(keyword != null){
+    query['text'] = {$regex: keyword+"+", $options:"i"};
+  }
+  
+  
+  if(name != null){
+    
+    query['user.screen_name'] = name;
+    
+  }
+
+  if(lang != null){
+    query['lang'] = lang;
+  }
+ 
+  if(sort !=null){
+    var temp = sort.split('-');
+    switch(temp[1]){
+      case 'name': sortQ['user.screen_name'] = temp[0] == 0?1:-1;
+      break;
+      case 'date':sortQ['created_at'] = temp[0] == 0?1:-1;
+      break;
+      case 'fav':sortQ['favorite_count'] = temp[0] == 0?1:-1;
+      break;
+      case 'retw':sortQ['retweet_count'] = temp[0] == 0?1:-1;
+      break;
+      case 'text':sortQ['text'] = temp[0] == 0?1:-1;
+      break;
+    }
+  }
+
+  console.log(query,sortQ);
   page = Number(page);
-  var query;
-  Tweet.find(query).skip((perPage * page) - perPage)
+  
+  
+  
+  Tweet.find(query).sort(sortQ).skip((perPage * page) - perPage)
   .limit(perPage).exec( function(err,results){
     Tweet.find(query).count().exec(function(err, count) {
-        if(count / perPage < page){
-          res.send({
-            
-            "total_pages": Math.ceil(count / perPage),
-            "total_match" : count,
-          });
-        }else{
-          res.send({
-            "current_page": page,
-            "total_pages": Math.ceil(count / perPage),
-            "results" : results,
-            "total_match" : count,
-          });
-        }
+      if( Math.ceil(count / perPage) < page){
+        res.send({
+          
+          "total_pages": Math.ceil(count / perPage),
+          "total_match" : count,
+        });
+      }else{
+
+        var fin = [];
+        results.forEach(result => {
+
+          var temp = {
+            date: result.created_at,
+            lang: result.lang,
+            text: result.text,
+            retweet: result.retweet_count,
+            fav: result.favorite_count,
+            urls: result.urls,
+            mentions: result.mentions,
+            hashtags: result.hashtags,
+            userScreenName: result.user.screen_name,
+            userName: result.user.name,
+            userFollowers: result.user.followers_count,
+            userFollowing: result.user.following_count,
+            userTweets: result.user.tweets_count
+          }
+          fin.push(temp);
+        });
+
+        res.send({
+          "current_page": page,
+          "total_pages": Math.ceil(count / perPage),
+          "results" : fin,
+          "total_match" : count,
+        });
+      }
       
     })
   })
-
+  
 }
- 
 
-var save_data = function(results) {
-  console.log(results.length);
+
+
+
+var save_data = function(data) {
   
-  results.forEach(data => {
-    var tweet = new Tweet();
-    var head;
-    if(data.retweeted_status !=undefined){
-      head =  data.retweeted_status;
-    }else{
-      head =  data;
+  
+  
+  var tweet = new Tweet();
+  var head;
+  if(data.retweeted_status !=undefined){
+    head =  data.retweeted_status;
+  }else{
+    head =  data;
+  }
+  
+  
+  tweet.created_at = (new Date(head.created_at)).getTime();
+  tweet.lang = head.lang;
+  tweet.id = data.id;
+  
+  
+  if(head.truncated == true){
+    tweet.text = head.extended_tweet.full_text;
+  }else {
+    tweet.text = head.text;
+  }
+  
+  tweet.quote_count = head.quote_count;
+  tweet.reply_count = head.reply_count;
+  tweet.retweet_count = head.retweet_count;
+  tweet.favorite_count = head.favorite_count;
+  
+  tweet.hashtags = [];
+  tweet.urls = [];
+  tweet.user_mentions = [];
+  if( head.entities !=undefined){
+    
+    head.entities.hashtags.forEach(hash => {
+      tweet.hashtags.push(hash.text);
+    })
+    
+    head.entities.urls.forEach(url => {
+      tweet.urls.push(url.url);
+    })
+    
+    
+    head.entities.user_mentions.forEach(user => {
+      tweet.user_mentions.push(user.screen_name);
+    })
+    
+  } 
+  
+  
+  if(head.place != undefined){
+    tweet.country_code = head.place.country_code;
+  }
+  
+  tweet.user.name = head.user.name;
+  tweet.user.screen_name = head.user.screen_name;
+  tweet.user.location = head.user.location;
+  tweet.user.followers_count = head.user.followers_count;
+  tweet.user.following_count = head.user.friends_count;
+  tweet.user.likes_count = head.user.favourites_count;
+  tweet.user.tweets_count = head.user.statuses_count;
+  tweet.user.joined_at = (new Date(head.user.created_at)).getTime() ;
+  
+  
+  
+  
+  
+  tweet.save(function(err){
+    
+    if (err) {
+      console.log(err);
+      return;
     }
-
-     
-      tweet.created_at = (new Date(head.created_at)).getTime();
-      tweet.lang = head.lang;
-      tweet.id = data.id;
-
-
-      if(head.truncated == true){
-        tweet.text = head.extended_tweet.full_text;
-      }else {
-        tweet.text = head.text;
-      }
-
-      tweet.quote_count = head.quote_count;
-      tweet.reply_count = head.reply_count;
-      tweet.retweet_count = head.retweet_count;
-      tweet.favorite_count = head.favorite_count;
-
-      tweet.hashtags = [];
-      head.entities.hashtags.forEach(hash => {
-        tweet.hashtags.push(hash.text);
-      })
-      tweet.urls = [];
-      head.entities.urls.forEach(url => {
-        tweet.urls.push(url.url);
-      })
-
-      tweet.user_mentions = [];
-      head.entities.user_mentions.forEach(user => {
-        tweet.user_mentions.push(user.screen_name);
-      })
+    else {
       
-      if(head.place != undefined){
-        tweet.country_code = head.place.country_code;
-      }
-
-      tweet.user.name = head.user.name;
-      tweet.user.screen_name = head.user.screen_name;
-      tweet.user.location = head.user.location;
-      tweet.user.followers_count = head.user.followers_count;
-      tweet.user.following_count = head.user.friends_count;
-      tweet.user.likes_count = head.user.favourites_count;
-      tweet.user.tweets_count = head.user.statuses_count;
-      tweet.user.joined_at = (new Date(head.user.created_at)).getTime() ;
-  
-
-    
-      
-     
-      tweet.save(function(err){
-
-        if (err) {
-          console.log(err);
-          return;
-      }
-      else {
-       
-          return;
-      }
-      });
-
-    
-    
-    
-   
-    
-  })  
-  
-  
-  
-  
-  
+      return;
+    }
+  });
 }

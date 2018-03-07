@@ -1,4 +1,5 @@
 var mongoose = require('mongoose');
+ 
 
 var tweetSchema = mongoose.Schema({
     
@@ -31,5 +32,5 @@ var tweetSchema = mongoose.Schema({
     }
 });
 
-
+ 
 module.exports = mongoose.model('Tweet', tweetSchema);
