@@ -1,5 +1,5 @@
 var express = require('express');
-
+var json2csv = require('json2csv').parse;
 var config = require('../config');
 var utils = require('./utils');
 var Tweet = require('../model');
@@ -123,10 +123,11 @@ module.exports.filter_function = function(req, res, next) {
   var sortQ = {};
   var perPage = 10;
   var page = req.body.page || req.query.page || 1;
+   
   
   var filters = {
     0 :[
-      'keywords',
+      'keyword',
       'name',
       'lang',
       'sname',
@@ -163,7 +164,7 @@ module.exports.filter_function = function(req, res, next) {
       var reg;
       var fd;
       switch(data){
-        case 'keywords': reg = 'text';
+        case 'keyword': reg = 'text';
         break;
         case 'name': reg = 'user.name';
         break;
@@ -256,63 +257,125 @@ module.exports.filter_function = function(req, res, next) {
     }
   }
 
-  console.log(query,sortQ);
+  console.log();
   page = Number(page);
   
-  
-  
-  Tweet.find(query).sort(sortQ).skip((perPage * page) - perPage)
-  .limit(perPage).exec( function(err,results){
-    Tweet.find(query).count().exec(function(err, count) {
-      if( Math.ceil(count / perPage) < page){
-        res.send({
-          
-          "total_pages": Math.ceil(count / perPage),
-          "total_match" : count,
-        });
-      }else{
+  if(req.path.split('/')[2] == 'csv'){
 
-        var fin = [];
-        if(results != undefined){
-          results.forEach(result => {
+    Tweet.find(query).sort(sortQ).exec( function(err,results){
+      var fin = [];
+          if(results != undefined){
+            results.forEach(result => {
+  
+              var temp = {
+                date: new Date(result.created_at),
+                lang: result.lang,
+                text: result.text,
+                retweet: result.retweet_count,
+                fav: result.favorite_count,
+                urls: result.urls.join(),
+                mentions: result.user_mentions.join(),
+                hashtags: result.hashtags.join(),
+                userScreenName: result.user.screen_name,
+                userName: result.user.name,
+                userFollowers: result.user.followers_count,
+                userFollowing: result.user.following_count,
+                userTweets: result.user.tweets_count
+              }
+              fin.push(temp);
+            });
 
-            var temp = {
-              date: result.created_at,
-              lang: result.lang,
-              text: result.text,
-              retweet: result.retweet_count,
-              fav: result.favorite_count,
-              urls: result.urls,
-              mentions: result.user_mentions,
-              hashtags: result.hashtags,
-              userScreenName: result.user.screen_name,
-              userName: result.user.name,
-              userFollowers: result.user.followers_count,
-              userFollowing: result.user.following_count,
-              userTweets: result.user.tweets_count
+            var fields =[
+              'date', 
+              'lang', 
+              'text', 
+              'retweet',
+              'fav',
+              'urls',
+              'mentions',
+              'hashtags',
+              'userScreenName',
+              'userName',
+              'userFollowers',
+              'userFollowing',
+              'userTweets',
+            ];
+            var opts = { fields };
+            
+            try {
+              const csv = json2csv(fin, opts);
+              res.setHeader('Content-disposition', 'attachment; filename=tweets.csv');
+              res.set('Content-Type', 'text/csv');
+              res.status(200).send(csv);
+            } catch (err) {
+              console.error(err);
             }
-            fin.push(temp);
-          });
 
-          res.send({
-            "current_page": page,
-            "total_pages": Math.ceil(count / perPage),
-            "results" : fin,
-            "total_match" : count,
-          });
-        } else {
-          res.send({
-            "total_pages": Math.ceil(count / perPage),
-            "total_match" : count,
-          });
-        }
-      
+             
+   
 
-       
-      }
-      
+          }else{
+
+          }
     })
-  })
+
+  }else{
+
+    Tweet.find(query).sort(sortQ).skip((perPage * page) - perPage)
+    .limit(perPage).exec( function(err,results){
+      Tweet.find(query).count().exec(function(err, count) {
+        if( Math.ceil(count / perPage) < page){
+          res.send({
+            
+            "total_pages": Math.ceil(count / perPage),
+            "total_match" : count,
+          });
+        }else{
+  
+          var fin = [];
+          if(results != undefined){
+            results.forEach(result => {
+  
+              var temp = {
+                date: result.created_at,
+                lang: result.lang,
+                text: result.text,
+                retweet: result.retweet_count,
+                fav: result.favorite_count,
+                urls: result.urls,
+                mentions: result.user_mentions,
+                hashtags: result.hashtags,
+                userScreenName: result.user.screen_name,
+                userName: result.user.name,
+                userFollowers: result.user.followers_count,
+                userFollowing: result.user.following_count,
+                userTweets: result.user.tweets_count
+              }
+              fin.push(temp);
+            });
+  
+            res.send({
+              "current_page": page,
+              "total_pages": Math.ceil(count / perPage),
+              "results" : fin,
+              "total_match" : count,
+            });
+          } else {
+            res.send({
+              "total_pages": Math.ceil(count / perPage),
+              "total_match" : count,
+            });
+          }
+        
+  
+         
+        }
+        
+      })
+    })
+  }
+  
+  
   
 }
 
@@ -397,4 +460,8 @@ var save_data = function(data) {
       return;
     }
   });
+}
+
+var get_data = function(data){
+
 }
