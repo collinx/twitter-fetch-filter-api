@@ -16,7 +16,7 @@ Demo for this API can be found on [Link](https://catchcollinx.me/twitter).
 
 ## Documentation
 
-Please refer to our extensive [Wiki documentation](https://github.com/collinx/twitter-fetch-filter-api/wiki) for more information.
+Please refer to [Wiki documentation](https://github.com/collinx/twitter-fetch-filter-api/wiki) for more information.
 
 ## Support
 For answers you may not find in the Wiki, please raise an issue. 
