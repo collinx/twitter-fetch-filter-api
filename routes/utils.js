@@ -21,6 +21,14 @@ module.exports.stream_function = function(req, res, next) {
   var keyword = req.body.track || req.query.track; 
   var max_tweet = req.body.tweet || req.query.tweet;
   var max_time = req.body.time || req.query.time;
+  if(!keyword){
+    res.send({
+      'code' : 1,
+      'status' : "Failed",
+      'message' : "No Parameters Passed",
+      
+    });
+  }
   if(!max_tweet && !max_time){
     max_time = MAX_TIME;
   }
