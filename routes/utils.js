@@ -57,12 +57,18 @@ module.exports.stream_function = function(req, res, next) {
   
   Twitter.on('connection error http', function (httpStatusCode) {
     console.log('connection error http', httpStatusCode);
+    res.send({
+      'code' : 1,
+      'status' : "Failed",
+      'message' : "Wrong Parameters Passed",
+      
+    });
   });
   
   Twitter.on('connection rate limit', function (httpStatusCode) {
     
     res.send({
-      'code' : httpStatusCode,
+      'code' : 1,
       'status' : "Failed",
       'message' : "connection rate limit",
       
@@ -139,9 +145,9 @@ module.exports.filter_function = function(req, res, next) {
       'name',
       'lang',
       'sname',
-      'mentions',
-      'hashtags',
-      'urls',
+      'mention',
+      'hashtag',
+      'url',
     ],
     1 :[
       
@@ -180,11 +186,11 @@ module.exports.filter_function = function(req, res, next) {
         break;
         case 'sname': reg = 'user.screen_name';
         break;
-        case 'mentions': reg = 'user_mentions';
+        case 'mention': reg = 'user_mentions';
         break;
-        case 'urls': reg = 'urls';
+        case 'url': reg = 'urls';
         break;
-        case 'hashtags': reg = 'hashtags';
+        case 'hashtag': reg = 'hashtags';
         break;
       }
       switch(temp[0]){
@@ -252,7 +258,7 @@ module.exports.filter_function = function(req, res, next) {
   if(sort !=null){
     var temp = sort.split('-');
     switch(temp[1]){
-      case 'name': sortQ['user.screen_name'] = temp[0] == 0?1:-1;
+      case 'sname': sortQ['user.screen_name'] = temp[0] == 0?1:-1;
       break;
       case 'date':sortQ['created_at'] = temp[0] == 0?1:-1;
       break;
